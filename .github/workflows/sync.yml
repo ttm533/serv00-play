@@ -2,39 +2,39 @@ name: Sync Fork with Upstream
 
 on:
   schedule:
-    - cron: '0 19 * * *'
+    - cron: '0 2 * * 5' # UTC 时间：每周五凌晨 2:00（对应北京时间上午 10:00）
   workflow_dispatch:
 
-permissions:
-  contents: write
-
 jobs:
- sync_latest_from_upstream:
-    name: Sync latest commits from upstream repo
+  sync:
     runs-on: ubuntu-latest
-    if: ${{ github.event.repository.fork }}
 
     steps:
-      # Step 1: run a standard checkout action
-      - name: Checkout target repo
+      - name: Checkout forked repository
         uses: actions/checkout@v3
-
-      # Step 2: run the sync action
-      - name: Sync upstream changes
-        id: sync
-        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
         with:
-          upstream_sync_repo: frankiejun/serv00-play
-          upstream_sync_branch: main
-          target_sync_branch: main
-          target_repo_token: ${{ secrets.GITHUB_TOKEN }} # automatically generated, no need to set
-          exclude: |
-            .github/workflows/sync.yml
+          ref: main
+          persist-credentials: false
 
-      - name: Check for errors
-        if: failure()
-        run: echo "Sync failed! Please check the logs for more details."
+      - name: Add upstream repository
+        run: |
+          git remote add upstream https://github.com/frankiejun/serv00-play.git
+          git fetch upstream
 
-      - name: Sync success message
-        if: success()
-        run: echo "Sync completed successfully!"
+      - name: Sync with upstream but exclude .github/workflows
+        run: |
+          git merge --no-commit upstream/main || echo "No conflicts during merge"
+          git reset HEAD .github/workflows/*
+          git checkout -- .github/workflows/
+          git add .
+          git commit -m "Sync with upstream excluding .github/workflows" || echo "No changes to commit"
+
+      - name: Configure GitHub token for authentication
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+
+      - name: Push changes to fork
+        run: |
+          git push origin main
