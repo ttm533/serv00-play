@@ -4,7 +4,7 @@ on:
   schedule:
     # 使用cron表达式定义任务运行的时间
     # github使用utc时间
-    - cron: '3 2 * * *' #波兰凌晨3点3分
+    - cron: '0 2 15 * *' # UTC 时间：每月 15 日凌晨 2:00（对应北京时间上午 10:00）
   workflow_dispatch:
 
 jobs:
