@@ -1,6 +1,5 @@
 name: Sync Fork with Upstream
 
-# 定义触发条件
 on:
   schedule:
     # 每天 UTC 时间 19:00 运行（北京时间次日凌晨 3:00）
@@ -8,48 +7,48 @@ on:
   # 允许手动触发工作流
   workflow_dispatch:
 
-# 设置权限：允许对内容进行写操作
 permissions:
   contents: write
 
-# 定义工作任务
 jobs:
   sync_latest_from_upstream:
-    # 作业名称
     name: Sync latest commits from upstream repo
-    # 使用最新的 Ubuntu 镜像作为运行环境
     runs-on: ubuntu-latest
-    # 条件：仅当仓库是 fork 时运行此任务
     if: ${{ github.event.repository.fork }}
 
     steps:
-      # Step 1: 检出目标仓库的代码到运行环境
+      # Step 1: 检出目标仓库的代码
       - name: Checkout target repo
         uses: actions/checkout@v3
 
-      # Step 2: 执行与上游仓库的同步操作
+      # Step 2: 同步上游代码
       - name: Sync upstream changes
         id: sync
         uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
         with:
-          # 指定上游仓库（格式：用户名/仓库名）
           upstream_sync_repo: frankiejun/serv00-play
-          # 指定上游分支名称
           upstream_sync_branch: main
-          # 指定本地目标分支名称
           target_sync_branch: main
-          # 使用 GitHub 自动生成的身份验证令牌
           target_repo_token: ${{ secrets.GITHUB_TOKEN }}
-          # 排除同步的文件路径（此处为 .github/workflows/deploy.yml 文件）
-          exclude: |
-            .github/workflows/deploy.yml
+          git_log_format_args: --pretty=oneline
+          git_config_user: GH Action - Upstream Sync
+          git_config_email: action@github.com
+          git_config_pull_rebase: false
+          shallow_since: 1 month ago
 
-      # Step 3: 检查同步是否失败并输出错误信息
+      # Step 3: 恢复被覆盖的文件
+      - name: Restore excluded file
+        run: |
+          git checkout origin/main -- .github/workflows/deploy.yml
+          git reset HEAD .github/workflows/deploy.yml
+          echo "Restored .github/workflows/deploy.yml"
+
+      # Step 4: 检查同步是否失败并输出错误信息
       - name: Check for errors
         if: failure()
         run: echo "Sync failed! Please check the logs for more details."
 
-      # Step 4: 输出同步成功的消息
+      # Step 5: 输出同步成功的消息
       - name: Sync success message
         if: success()
         run: echo "Sync completed successfully!"
