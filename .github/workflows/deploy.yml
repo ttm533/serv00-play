@@ -4,7 +4,7 @@ on:
   schedule:
     # 使用 cron 表达式定义任务运行的时间
     # 每小时运行一次（UTC 时间）
-    - cron: '0 * * * *'
+    - cron: '0 */8 * * *'
   workflow_dispatch:
 
 jobs:
