@@ -3,7 +3,7 @@ name: 批量保活进程
 on:
   schedule:
     # 使用 cron 表达式定义任务运行的时间
-    # 每小时运行一次（UTC 时间）
+    # 每 8 小时运行一次（UTC 时间）
     - cron: '0 */8 * * *'
   workflow_dispatch:
 
@@ -17,16 +17,24 @@ jobs:
 
       - name: 安装依赖
         run: |
-          sudo apt-get install sshpass
-          sudo apt-get install jq
+          sudo apt-get update
+          sudo apt-get install -y sshpass jq
 
-      - name: 登录各个serv00并执行保活脚本
+      - name: 登录各个 serv00 并执行保活脚本
         env:
           HOSTS_JSON: ${{ secrets.HOSTS_JSON }}
-          TELEGRAM_TOKEN: ${{secrets.TELEGRAM_TOKEN}}
-          TELEGRAM_USERID: ${{secrets.TELEGRAM_USERID}}
-          WXSENDKEY: ${{secrets.WXSENDKEY}}
-          SENDTYPE: ${{secrets.SENDTYPE}}
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_USERID: ${{ secrets.TELEGRAM_USERID }}
+          WXSENDKEY: ${{ secrets.WXSENDKEY }}
+          SENDTYPE: ${{ secrets.SENDTYPE }}
         run: |
           chmod +x ./revive.sh
           ./revive.sh
+
+      - name: 删除工作流运行
+        uses: Mattraks/delete-workflow-runs@v2
+        with:
+          token: ${{ secrets.TOKEN }}
+          repository: ${{ github.repository }}
+          retain_days: 2
+          keep_minimum_runs: 6
