@@ -2,7 +2,7 @@ name: Sync Fork with Upstream
 
 on:
   schedule:
-    - cron: '0 19 * * *' # 每天 UTC 时间 19:00 运行
+    - cron: '0 19 * * *'  # 每天 UTC 时间 19:00 运行
   workflow_dispatch:
 
 permissions:
@@ -34,17 +34,21 @@ jobs:
           git_config_pull_rebase: false
           shallow_since: 1 month ago
 
-      # Step 3: 恢复被覆盖的文件并检查冲突
-      - name: 恢复被覆盖的文件
+      # Step 3: 解决冲突并恢复文件
+      - name: 解决冲突并恢复文件
         run: |
-          git restore --source=origin/main --staged --worktree .github/workflows/deploy.yml
-          git commit -m "恢复 deploy.yml 文件" || echo "没有文件需要恢复"
-        continue-on-error: true
+          # 尝试拉取上游分支的更新并合并
+          git fetch upstream
+          git checkout upstream/main -- .github/workflows/deploy.yml
+          # 解决冲突后提交
+          git add .github/workflows/deploy.yml
+          git commit -m "Resolved merge conflict in deploy.yml" || echo "没有文件需要提交"
+          git push origin main
 
       # Step 4: 检查同步是否失败并输出错误信息
       - name: 检查同步错误
         if: failure()
-        run: echo "同步失败！请检查日志了解详细信息。"
+        run: echo "同步失败！请检查日志了解更多详情。"
 
       # Step 5: 输出同步成功的消息
       - name: 同步成功消息
