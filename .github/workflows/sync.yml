@@ -2,7 +2,9 @@ name: Sync Fork with Upstream
 
 on:
   schedule:
-    - cron: '0 19 * * *'  # 每天 UTC 时间 19:00 运行
+    # 每天 UTC 时间 19:00 运行（北京时间次日凌晨 3:00）
+    - cron: '0 19 * * *'
+  # 允许手动触发工作流
   workflow_dispatch:
 
 permissions:
@@ -10,17 +12,17 @@ permissions:
 
 jobs:
   sync_latest_from_upstream:
-    name: 同步上游仓库最新代码
+    name: Sync latest commits from upstream repo
     runs-on: ubuntu-latest
     if: ${{ github.event.repository.fork }}
 
     steps:
       # Step 1: 检出目标仓库的代码
-      - name: 检出目标仓库代码
+      - name: Checkout target repo
         uses: actions/checkout@v3
 
       # Step 2: 同步上游代码
-      - name: 同步上游改动
+      - name: Sync upstream changes
         id: sync
         uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
         with:
@@ -34,32 +36,19 @@ jobs:
           git_config_pull_rebase: false
           shallow_since: 1 month ago
 
-      # Step 3: 解决冲突并恢复文件
-      - name: 解决冲突并恢复文件
+      # Step 3: 恢复被覆盖的文件
+      - name: Restore excluded file
         run: |
-          # 尝试拉取上游分支的更新并合并
-          git fetch upstream
-          git checkout upstream/main -- .github/workflows/deploy.yml
-          # 解决冲突后提交
-          git add .github/workflows/deploy.yml
-          git commit -m "Resolved merge conflict in deploy.yml" || echo "没有文件需要提交"
-          git push origin main
+          git checkout origin/main -- .github/workflows/deploy.yml
+          git reset HEAD .github/workflows/deploy.yml
+          echo "Restored .github/workflows/deploy.yml"
 
       # Step 4: 检查同步是否失败并输出错误信息
-      - name: 检查同步错误
+      - name: Check for errors
         if: failure()
-        run: echo "同步失败！请检查日志了解更多详情。"
+        run: echo "Sync failed! Please check the logs for more details."
 
       # Step 5: 输出同步成功的消息
-      - name: 同步成功消息
+      - name: Sync success message
         if: success()
-        run: echo "同步完成！"
-
-      # Step 6: 删除旧的工作流运行记录
-      - name: 删除工作流运行
-        uses: Mattraks/delete-workflow-runs@v2
-        with:
-          token: ${{ secrets.TOKEN }}
-          repository: ${{ github.repository }}
-          retain_days: 2
-          keep_minimum_runs: 6
+        run: echo "Sync completed successfully!"
